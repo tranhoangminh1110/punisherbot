@@ -1,0 +1,87 @@
+from aiogram import Bot, Dispatcher, executor, types
+import time
+import asyncio
+import logging
+import datetime
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters import Command
+from aiogram.dispatcher.filters.state import State, StatesGroup
+logging.basicConfig(level=logging.INFO)
+limit = datetime.datetime.now() - datetime.timedelta(seconds=4)
+bot = Bot(token = '6304012917:AAGYbshMlkK8JbyosQAYdJfne48PMS7pfac')
+storage = MemoryStorage()
+dp = Dispatcher(bot, storage=storage)
+#lệnh mở bot
+@dp.message_handler(commands=['online'])
+async def hello(message: types.Message):
+    await message.reply('Punisher online, ready to punish !!!')
+#mở bot    
+@dp.message_handler(commands=['wru'])
+async def wru(message: types.message):
+    await message.reply('tôi là Punisher, sẵn sàng trừng trị kẻ phản đồ')
+#hàm chống spam sticker
+sticker_count = {}
+@dp.message_handler(Command('stk_rule'))
+async def stk_rule(message: types.Message):
+    await message.reply('spam tối thiếu sticker 3 lần,\nnếu tiếp tục quá 3 lần sẽ bị tuyên tội thất động ')
+@dp.message_handler(content_types=types.ContentType.STICKER)
+async def restrict_sticker(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    if user_id in sticker_count:
+        sticker_count[user_id] += 1
+        await message.reply('nhớ spam sticker ít lại nhé')
+    else:
+        sticker_count[user_id] = 1
+        await message.reply('nhớ spam sticker ít lại nhé')
+    if sticker_count[user_id] == 4:
+        await message.reply("gửi quá nhiều sticker. ta tuyên tội: thất động (im mồm)\n liên hệ thẩm phán @doestheblackmoonhowl để xóa tội và mở khóa sticker")
+        sticker_count[user_id] = 0
+        await bot.restrict_chat_member(chat_id=message.chat.id,user_id=user_id ,permissions=types.ChatPermissions(can_send_messages=True,can_send_photos= True))
+        await message.delete()
+@dp.message_handler(Command('punish'))
+async def punish(message: types.Message):
+    try:
+        user_id = message.reply_to_message.from_user.id
+        reply_text = "ta tuyên tội phán xét: Thất Động (im mồm)"
+        await bot.send_message(chat_id=message.chat.id, text=reply_text, reply_to_message_id=message.reply_to_message.message_id)
+        #khởi tạo thời gian
+        
+        '''hàm khỏi tạo thời gian có lỗi
+        curent time
+        time.sleep
+        datetime.datetime.now() + datetime.timedelta(seconds = ... )'''
+
+        #thiết lập thời gian
+        await bot.restrict_chat_member(chat_id=message.chat.id, user_id=user_id, permissions=types.ChatPermissions())
+        await message.reply("Đã Trừng phạt đối tượng ")
+    except AttributeError:
+        await message.reply("kẻ nào sẽ phải bị trừng phạt thưa ngài ?")
+    except Exception as e:
+        await message.reply("không nhất thiết phải tuyên tội")
+@dp.message_handler(Command('slash'))
+async def slash(message: types.Message):
+    try:
+        user_id = message.reply_to_message.from_user.id
+        reply_text = "ta tuyên tội phán xét: Trảm"
+        await bot.send_message(chat_id=message.chat.id, text=reply_text, reply_to_message_id=message.reply_to_message.message_id)
+        await bot.kick_chat_member(chat_id=message.chat.id, user_id=user_id, permissions=types.ChatPermissions())
+        await message.reply("Đã Trừng phạt đối tượng ")
+    except AttributeError:
+        await message.reply("kẻ nào sẽ phải bị trừng phạt thưa ngài ?")
+    except Exception as e:
+        await message.reply("không nhất thiết phải thiết trảm")
+@dp.message_handler(Command('list_wp'))
+async def wp(message: types.Message):
+    await message.reply("Các phương thức trừng phạt kẻ chống đối:\n/slash\n/punish")
+@dp.message_handler(Command('exc'))
+async def excuse(message: types.Message):
+    if message.reply_to_message:
+        user_id = message.reply_to_message.from_user.id
+        reply_text = "mọi tội lỗi của người đã được xóa bỏ"
+        await bot.send_message(chat_id=message.chat.id, text=reply_text, reply_to_message_id=message.reply_to_message.message_id)
+        await bot.restrict_chat_member(chat_id=message.chat.id, user_id=user_id, permissions=types.ChatPermissions(can_send_messages=True,can_send_photos=True,can_send_other_messages=True))
+    else:
+        await message.reply("hãy chỉ định đối tượng cần được xóa án")
+if __name__ == '__main__':
+    executor.start_polling(dp)
